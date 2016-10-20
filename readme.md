@@ -5,7 +5,7 @@ The [Ambulance Response Programme](https://www.england.nhs.uk/ourwork/qual-clin-
 
 The code in this package is used to process and monitor the quality of the 
 data supplied by each ambulance service trusts participating in this research 
-programme.  The ambulance service supplying data are:
+programme.  The ambulance services supplying data are:
   + East Midlands Ambulance Service NHS Trust
   + East of England Ambulance Service NHS Trust
   + London Ambulance Service
