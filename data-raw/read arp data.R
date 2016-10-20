@@ -34,7 +34,7 @@ save(measures_data, service_data, file = "data/auxillary data.Rda")
 
 # Read in service data ----------------------------------------------------
 arp_service_list <- lapply(service_data$amb_service, function(service) {
-  data_wide <- data.table(read.xlsx("data-raw/src data/Ambulance Response Programme -05092016 National Collation.xlsx", sheet = service, rows = 2:219, cols = 1:59, colNames = FALSE, skipEmptyRows = TRUE))
+  data_wide <- data.table(read.xlsx("data-raw/src data/Ambulance Response Programme -17102016 National Collation.xlsx", sheet = service, rows = 2:219, colNames = FALSE, skipEmptyRows = TRUE))
   suppressWarnings(setnames(data_wide, c("measure_code", "measure_descr", "sub_measure", "data_format", make.unique(paste0("date_", as.integer(data_wide[1, 5:ncol(data_wide), with = FALSE]))))))
   data_wide[, row_num := as.integer(row.names(data_wide))]
 
@@ -54,8 +54,11 @@ arp_service_list <- lapply(service_data$amb_service, function(service) {
 # Bind data into one dt
 arp_data <- rbindlist(arp_service_list)
 
-# more corrections to sheet formatting (multiple "11.c(i)")
+# more corrections to sheet formatting
+## (multiple "11.c(i)")
 arp_data[measure_code == "11.c(i)", measure_code := paste0("11.c(", tolower(as.roman(rank(row_num))), ")"), by = .(amb_service, week_beginning)]
+## Transposed month and day in date
+arp_data[week_beginning == "date_42554", week_beginning := "date_42436"]
 
 # save data
 save(arp_data, file = "data/arp_data_raw.Rda")
