@@ -7,10 +7,13 @@ Authors@R: person("Tony", "Stone", email = "tony.stone@sheffield.ac.uk",
             role = c("aut", "cre"))
 Description: Processing and evaluting the data supplied by ambulance
     service trusts participating in the Ambulance Response Programme.
-Depends: R (>= 3.3.1),
-         data.table (>= 1.9.6)
+Depends:
+    R (>= 3.3.1),
+    data.table (>= 1.9.6)
 License: GPL-3
 LazyData: TRUE
-Imports: lubridate (>= 1.6.0),
+Imports:
+    lubridate (>= 1.6.0),
     ggplot2 (>= 2.1.0),
     scales (>= 0.4.0)
+RoxygenNote: 5.0.1
