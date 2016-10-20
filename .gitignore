@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+packrat/lib*/
+# Exclude raw data but include processing scripts
+data-raw/**/*
+!data-raw/*
+data/**/*
+data/*
+test/**/*
+test/*
