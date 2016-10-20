@@ -164,13 +164,3 @@ plotWeeklyVal <- function(data, measure_val, sub_measure_val = NA, measure_type_
 
   return(plot)
 }
-
-plotWeeklyVal(arp_data_final, "Average allocations per incident", call_level_vals = c("red2", "green2"))
-
-
-plotWeeklyVal(arp_data_final, "Time from call connect to", "resource allocation", "median", show_call_level = TRUE)
-
-plotWeeklyVal(arp_data_final, "Hours lost at hospital")
-plotWeeklyVal(arp_data_final, "Time to treat - Red incidents")
-
-plotWeeklyVal(arp_data_final, "Staff hours (planned)")
