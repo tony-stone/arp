@@ -98,22 +98,32 @@ plotWeeklyVal <- function(data, measure_val, sub_measure_val = NA, measure_type_
   if(exists("col_level_col")) {
     setnames(col_level_col, "col_level")
     plot_data <- cbind(plot_data, col_level_col)
+
+    sdn_lines <- plot_data[, .(mn = mean(value, na.rm = TRUE),
+                               sdn = nSD * sd(value, na.rm = TRUE)),
+                           by = .(call_level, amb_service, sub_measure, measure_type, col_level)]
+  } else {
+    sdn_lines <- plot_data[, .(mn = mean(value, na.rm = TRUE),
+                               sdn = nSD * sd(value, na.rm = TRUE)),
+                           by = .(call_level, amb_service, sub_measure, measure_type)]
   }
 
   sdn_lines <- plot_data[, .(mn = mean(value, na.rm = TRUE),
                              sdn = nSD * sd(value, na.rm = TRUE)),
-                         by = .(call_level, amb_service, sub_measure, measure_type, col_level)]
+                         by = .(call_level, amb_service, sub_measure, measure_type)]
   sdn_lines[, ':=' (sdn_low = mn - sdn,
                     sdn_high = mn + sdn)]
 
-  plot_data <- merge(plot_data, sdn_lines[, .(call_level, amb_service, sub_measure, measure_type, col_level, mn, sdn)], by = c("call_level", "amb_service", "sub_measure", "measure_type", "col_level"))
+  plot_data <- merge(plot_data, sdn_lines[, .(call_level, amb_service, sub_measure, measure_type, mn, sdn)], by = c("call_level", "amb_service", "sub_measure", "measure_type"))
   plot_data[, outlier := abs(value - mn) > sdn]
 
 
   if(show_call_level & length(unique(plot_data$sub_measure)) > 1) {
     plot <- ggplot2::ggplot(plot_data, ggplot2::aes(x = week_beginning, y = value, colour = col_level, linetype = sub_measure))
-  } else {
+  } else if("col_level" %in% colnames(plot_data)) {
     plot <- ggplot2::ggplot(plot_data, ggplot2::aes(x = week_beginning, y = value, colour = col_level))
+  } else {
+    plot <- ggplot2::ggplot(plot_data, ggplot2::aes(x = week_beginning, y = value))
   }
 
   if(show_call_level) plot <- plot + getCallColPallete()
