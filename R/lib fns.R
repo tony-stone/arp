@@ -108,9 +108,6 @@ plotWeeklyVal <- function(data, measure_val, sub_measure_val = NA, measure_type_
                            by = .(call_level, amb_service, sub_measure, measure_type)]
   }
 
-  sdn_lines <- plot_data[, .(mn = mean(value, na.rm = TRUE),
-                             sdn = nSD * sd(value, na.rm = TRUE)),
-                         by = .(call_level, amb_service, sub_measure, measure_type)]
   sdn_lines[, ':=' (sdn_low = mn - sdn,
                     sdn_high = mn + sdn)]
 
