@@ -8,7 +8,7 @@ data supplied by each ambulance service trusts participating in this research
 programme.  The ambulance services supplying data are:
   + East Midlands Ambulance Service NHS Trust
   + East of England Ambulance Service NHS Trust
-  + London Ambulance Service
+  + London Ambulance Service NHS Trust
   + North East Ambulance Service NHS Foundation Trust
   + North West Ambulance Service NHS Trust
   + South Central Ambulance Service NHS Foundation Trust
