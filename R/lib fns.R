@@ -39,7 +39,7 @@ cleanDatetimes <- function(t1, hours_cut_off = 0) {
   return(as.character(t1_numeric))
 }
 
-getCallColPallete <- function() {
+getCallColPallete1 <- function() {
   rgb_colours <- list(all = c(0, 0, 0),
                       red1 = c(103,0,31),
                       red2 = c(178,24,43),
@@ -56,8 +56,27 @@ getCallColPallete <- function() {
   return(ggplot2::scale_colour_manual(name = "call types", limits = names(pallete_cols), breaks = names(pallete_cols), drop = TRUE, values = pallete_cols))
 }
 
+getCallColPallete2.1 <- function() {
+  rgb_colours <- list(all = c(0, 0, 0),
+                      red = c(103,0,31),
+                      amberResponse = c(230,85,13),
+                      amberTransport = c(253,141,60),
+                      amberFaceToFace = c(253,190,133),
+                      greenResponse = c(0,68,27),
+                      greenTransport = c(27,120,55),
+                      greenFaceToFace = c(90,174,97),
+                      greenHearAndTreat = c(166,219,160),
+                      uncoded = rep(100, 3))
 
-plotWeeklyVal <- function(data, measure_val, sub_measure_val = NA, measure_type_val = NA, call_level_vals = NA, show_call_level = FALSE, nSD = 3, showSDLines = TRUE, highlightOutliers = TRUE) {
+  pallete_cols <- substr(sapply(rgb_colours, function(col) {
+    return(rgb(col[1], col[2], col[3], 255, maxColorValue = 255))
+  }), 1, 7)
+
+  return(ggplot2::scale_colour_manual(name = "call types", limits = names(pallete_cols), breaks = names(pallete_cols), drop = TRUE, values = pallete_cols))
+}
+
+
+plotWeeklyVals <- function(data, measure_val, sub_measure_val = NA, measure_type_val = NA, call_level_vals = NA, show_call_level = FALSE, call_level_version = "1", nSD = 3, showSDLines = TRUE, highlightOutliers = TRUE) {
 
   plot_data <- copy(data[measure %in% measure_val & !is.na(value)])
 
@@ -123,7 +142,15 @@ plotWeeklyVal <- function(data, measure_val, sub_measure_val = NA, measure_type_
     plot <- ggplot2::ggplot(plot_data, ggplot2::aes(x = week_beginning, y = value))
   }
 
-  if(show_call_level) plot <- plot + getCallColPallete()
+  if(show_call_level) {
+    if(call_level_version == "1") {
+      plot <- plot + getCallColPallete1()
+    } else if(call_level_version == "2.1") {
+      plot <- plot + getCallColPallete2.1()
+    } else if(call_level_version == "2.2") {
+      plot <- plot + getCallColPallete2.2()
+    }
+  }
 
   if(showSDLines) {
   if("col_level" %in% colnames(plot_data)) {
@@ -153,14 +180,38 @@ plotWeeklyVal <- function(data, measure_val, sub_measure_val = NA, measure_type_
 
   plot <- plot +
     ggplot2::ggtitle(paste0(measure_val, sub_measure_val, measure_type_val, " [", plot_measures, "]"))  +
-    ggplot2::facet_wrap(~amb_service, ncol = 2, scales = "free_y") +
+    ggplot2::facet_wrap(~amb_service, ncol = 2, scales = "free") +
     ggplot2::geom_line(size = 1) +
-    ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "2 weeks") +
+    ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "1 week", expand = c(0, 2)) +
     ggplot2::scale_y_continuous(labels = scales::comma) +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0))
 
 
-  print(plot)
-
   return(plot)
+}
+
+
+
+identifyOutlyingAndMissingData <- function(data, nSD = 3) {
+  outlier_data <- copy(data)
+
+  outlier_data[, ':=' (mn = mean(value, na.rm = TRUE),
+                       sd = sd(value, na.rm = TRUE)),
+               by = .(amb_service, measure_order)]
+
+  outliers <- outlier_data[(abs(value - mn) / sd > nSD | is.na(value)), .(amb_service, week_beginning, measure_code, measure, sub_measure, measure_type, call_level, problem = paste0("outlier: >", nSD, "SDs"), value, measure_order)]
+  outliers[is.na(value), problem := "missing"]
+
+  start_dates <- outliers[!is.na(value), .(strt_date = min(week_beginning)), by = amb_service]
+
+  outliers <- merge(outliers, start_dates, by = "amb_service")
+  outliers <- outliers[week_beginning >= strt_date]
+
+  setorder(outliers, amb_service, week_beginning, measure_order)
+
+  outliers[, c("value", "measure_order", "strt_date")  := NULL]
+
+  if(nrow(outliers) == 0) outlier <- NA
+
+  return(outliers)
 }
