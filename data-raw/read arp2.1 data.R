@@ -5,10 +5,9 @@ library(lubridate)
 load("data/auxillary_data2.1.Rda")
 
 
-service <- "WMAS"
 # Read in service data ----------------------------------------------------
 arp_service_list <- lapply(service_data2.1$sheet_name, function(service) {
-  data_wide <- data.table(read.xlsx("data-raw/src data/Ambulance Response Programme Template Submission P2 17102016.xlsx", sheet = service, rows = 2:256, colNames = FALSE, skipEmptyRows = TRUE))
+  data_wide <- data.table(read.xlsx("data-raw/src data/phase 2.1 data/Ambulance Response Programme Template Submission P2 17102016.xlsx", sheet = service, rows = 2:256, colNames = FALSE, skipEmptyRows = TRUE))
   suppressWarnings(setnames(data_wide, c("measure_code", "measure_descr", "sub_measure", "data_format", make.unique(paste0("date_", as.integer(data_wide[1, 5:ncol(data_wide), with = FALSE]))))))
   data_wide[, row_num := as.integer(row.names(data_wide))]
 
@@ -36,7 +35,7 @@ arp_service_list <- lapply(service_data2.1$sheet_name, function(service) {
   try(if(any(duplicated(data_wide_selected$measure_code))) stop(paste0("Duplicated measure codes in ", service, " data (", paste0(unique(data_wide_selected$measure_code[duplicated(data_wide_selected$measure_code)]), collapse = "; "), ").")))
 
   suppressWarnings(data_long <- melt(data_wide_selected, id.vars = c("measure_code", "row_num"), variable.name = "week_beginning", value.name = "value", variable.factor = FALSE))
-  data_long[, ':=' (amb_service = service,
+  data_long[, ':=' (service_sheet_name = service,
                     value = as.character(value))]
   return(data_long)
 })

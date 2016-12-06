@@ -1,5 +1,5 @@
 cleanTimes <- function(t1) {
-  t1_numeric <- as.double(t1) * 14400
+  t1_numeric <- as.double(t1) * 1440
 
   # If not valid double assume time string
   pattern_match <- regexec("^(\\d+):(\\d+):(\\d+)$", t1[is.na(t1_numeric)])
@@ -62,10 +62,9 @@ getCallColPallete2.1 <- function() {
                       amberResponse = c(230,85,13),
                       amberTransport = c(253,141,60),
                       amberFaceToFace = c(253,190,133),
-                      greenResponse = c(0,68,27),
+                      greenFaceToFace = c(0,68,27),
                       greenTransport = c(27,120,55),
-                      greenFaceToFace = c(90,174,97),
-                      greenHearAndTreat = c(166,219,160),
+                      greenHearAndTreat = c(90,174,97),
                       uncoded = rep(100, 3))
 
   pallete_cols <- substr(sapply(rgb_colours, function(col) {
@@ -178,12 +177,58 @@ plotWeeklyVals <- function(data, measure_val, sub_measure_val = NA, measure_type
     }
   }
 
+  title_text <- paste0(measure_val, sub_measure_val, measure_type_val, " [", plot_measures, "]")
+  if(showSDLines == TRUE | highlightOutliers == TRUE) title_text <- paste0(title_text, "\n(outliers/limits shown at ", nSD, "SDs)")
+
   plot <- plot +
-    ggplot2::ggtitle(paste0(measure_val, sub_measure_val, measure_type_val, " [", plot_measures, "]"))  +
+    ggplot2::ggtitle(title_text)  +
     ggplot2::facet_wrap(~amb_service, ncol = 2, scales = "free") +
     ggplot2::geom_line(size = 1) +
     ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "1 week", expand = c(0, 2)) +
     ggplot2::scale_y_continuous(labels = scales::comma) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0))
+
+
+  return(plot)
+}
+
+
+plotWeeklyCSTriggers <- function(data, call_level_val, nSD = 3, showSDLines = TRUE) {
+
+  plot_data <- copy(data[measure == "Clock start triggers" & call_level == call_level_val & !is.na(value)])
+
+  plot_measures <- paste0(sort(unique(plot_data$measure_code)), collapse = "; ")
+
+  sdn_lines <- plot_data[, .(mn = mean(value, na.rm = TRUE),
+                              sdn = nSD * sd(value, na.rm = TRUE)),
+                          by = .(amb_service, sub_measure)]
+
+  sdn_lines[, ':=' (sdn_low = mn - sdn,
+                    sdn_high = mn + sdn,
+                    mn = NULL,
+                    sdn = NULL)]
+
+  plot_data <- merge(plot_data, sdn_lines, by = c("amb_service", "sub_measure"))
+
+  setorder(plot_data, sub_measure)
+  plot <- ggplot2::ggplot(plot_data, ggplot2::aes(x = week_beginning, y = value, fill = sub_measure)) +
+    ggplot2::geom_density(stat = "identity", position = "stack")
+
+  title_text <- paste0("Clock start triggers - ", call_level_val, " [", plot_measures, "]")
+
+  if(showSDLines) {
+      plot <- plot +
+        ggplot2::geom_line(data = plot_data, ggplot2::aes(x = week_beginning, y = sdn_high, linetype = sub_measure), position = "stack") +
+        ggplot2::geom_line(data = plot_data, ggplot2::aes(x = week_beginning, y = sdn_low, linetype = sub_measure), position = "stack")
+
+      title_text <- paste0(title_text, "\n([naive!] limits shown at ", nSD, "SDs)")
+  }
+
+  plot <- plot +
+    ggplot2::ggtitle(title_text)  +
+    ggplot2::facet_wrap(~amb_service, ncol = 2) +
+    ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "1 week", expand = c(0, 2)) +
+    ggplot2::scale_y_continuous(labels = scales::percent) +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0))
 
 
@@ -209,9 +254,183 @@ identifyOutlyingAndMissingData <- function(data, nSD = 3) {
 
   setorder(outliers, amb_service, week_beginning, measure_order)
 
-  outliers[, c("value", "measure_order", "strt_date")  := NULL]
+  outliers[, c("value", "strt_date")  := NULL]
 
-  if(nrow(outliers) == 0) outlier <- NA
+  if(nrow(outliers) == 0) outliers <- NA
 
   return(outliers)
+}
+
+
+examineData <- function(phase = 1, outliers_SD = 3) {
+
+  if(!(phase %in% c(1, 2.1))) stop("Invalid phase")
+
+  if(phase == 1) {
+    arp_data <- readRDS("data/arp_data1_final.Rds")
+  } else if(phase == 2.1) {
+    arp_data <- readRDS("data/arp_data2.1_final.Rds")
+  }
+
+  measures <- unique(arp_data[, .(measure, sub_measure, measure_type, call_level, measure_order)])
+  setorder(measures, measure_order)
+
+  measure_code_lookup <- arp_data[, .(position = min(measure_order)), by = measure_code]
+
+  #  print(plotWeeklyVals(arp_data, "Total number of calls answered", "any origin", show_call_level = TRUE, call_level_version = "1"))
+
+  i <- 1
+  while(i <= nrow(measures)) {
+    if(nrow(arp_data[!is.na(value) & measure == measures[i, measure] & sub_measure == measures[i, sub_measure] & measure_type == measures[i, measure_type] & call_level == measures[i, call_level]]) == 0) {
+      cat(paste("No data for:", paste(measures[i, .(measure, sub_measure, measure_type, call_level)], collapse = " - ")))
+    } else {
+      print(plotWeeklyVals(arp_data, measures[i, measure], measures[i, sub_measure], measures[i, measure_type], measures[i, call_level], show_call_level = TRUE, nSD = outliers_SD, call_level_version = as.character(phase)))
+    }
+    cmd <- readline(prompt="Press [enter] to continue; [b] to go back; [m(measure code)] to jump to measure; or [q] to quit. Alternatively, enter a number to proceed (+ve) or move back (-ve) by: ")
+    if(!is.na(as.integer(cmd))) {
+      i <- i + as.integer(cmd)
+    } else if(tolower(cmd) == "q") {
+      break
+    } else if(tolower(cmd) == "b") {
+      i <- i - 1
+    } else if(tolower(substr(cmd, 1, 1)) == "m") {
+      if(substr(cmd, 2, nchar(cmd)) %in% measure_code_lookup[, measure_code]) {
+        i <- measure_code_lookup[measure_code == substr(cmd, 2, nchar(cmd)), position]
+      } else {
+        warning("Measure code not found.", immediate. = TRUE)
+      }
+    } else {
+      i <- i + 1
+    }
+  }
+}
+
+
+examineProblematicData <- function(phase = 1, measuresCombined = TRUE, outliersAtSD = 3) {
+  if(!(phase %in% c(1, 2.1))) stop("Invalid phase")
+
+  if(phase == 1) {
+    arp_data <- readRDS("data/arp_data1_final.Rds")
+  } else if(phase == 2.1) {
+    arp_data <- readRDS("data/arp_data2.1_final.Rds")
+  }
+
+  outlying_or_missing <- identifyOutlyingAndMissingData(arp_data, outliersAtSD)
+
+  if(measuresCombined) {
+    # missingness by week and service (across all measures)
+    arp_data_weekly_missingness <-
+      arp_data[, .(N = .N, missing = sum(is.na(value))), by = .(amb_service, week_beginning)]
+    arp_data_weekly_missingness[, missing_pc := round(missing / N, 3) * 100]
+
+    plot <- ggplot2::ggplot(arp_data_weekly_missingness[missing_pc != 100], ggplot2::aes(x = week_beginning, y = amb_service, fill = missing_pc)) +
+      ggplot2::labs(title = "Missing data by service and week", x = "week beginning", y = "ambulance service")  +
+      ggplot2::geom_tile(colour = "white", size = 0.1) +
+      ggplot2::coord_fixed(ratio = 7) +
+      ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "1 week", expand = c(0, 0)) +
+      ggplot2::scale_y_discrete(limits = sort(unique(arp_data_weekly_missingness[, amb_service]), decreasing = TRUE)) +
+      ggplot2::scale_fill_continuous(low = "#ffffcc", high = "#800026", guide = ggplot2::guide_colourbar("Missing values (%)")) +
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0), legend.position = "bottom", panel.grid = ggplot2::element_blank())
+
+    print(plot)
+  } else {
+
+    services <- sort(unique(arp_data$amb_service))
+
+    setorder(outlying_or_missing, -measure_order)
+    measure_codes <- unique(outlying_or_missing[, measure_code])
+    outlying_or_missing[, measure_order_factor := factor(measure_code, levels = measure_codes, ordered = TRUE)]
+
+    outlying_or_missing[, measure_set := as.integer(measure_order > median(unique(measure_order))) + 1L, by = amb_service]
+
+    i <- 1
+    while(i <= length(services)) {
+      if (outlying_or_missing[amb_service == services[i], .N] == 0) {
+        warning(paste0(services[i], " has no problematic data."))
+        i <- i + 1
+        next
+      }
+      plot <- ggplot2::ggplot(outlying_or_missing[amb_service == services[i]], ggplot2::aes(x = week_beginning, y = measure_order_factor, fill = problem)) +
+        ggplot2::labs(title = paste0(services[i], " problematic data by week and problem"), x = "week beginning", y = "measure code") +
+        ggplot2::geom_tile() +
+        ggplot2::coord_fixed(ratio = 1/7) +
+        ggplot2::facet_wrap(~measure_set, ncol = 2, scales = "free_y") +
+        ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "2 weeks", expand = c(0, 0)) +
+        ggplot2::scale_y_discrete() +
+        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0))
+
+      print(plot)
+
+      cmd <- readline(prompt="Press [enter] to continue; [b] to go back; or [q] to quit. Alternatively, enter a number to proceed (+ve) or move back (-ve) by: ")
+
+      if(!is.na(as.integer(cmd))) {
+        i <- i + as.integer(cmd)
+      } else if(tolower(cmd) == "q") {
+        break
+      } else if(tolower(cmd) == "b") {
+        i <- i - 1
+      } else {
+        i <- i + 1
+      }
+    }
+
+  }
+
+  return(outlying_or_missing)
+}
+
+
+getARPSUmmaryData <- function(phase = 1) {
+  if(!(phase %in% c(1, 2.1))) stop("Invalid phase")
+
+  if(phase == 1) {
+    arp_data <- readRDS("data/arp_data1_final.Rds")
+  } else if(phase == 2.1) {
+    arp_data <- readRDS("data/arp_data2.1_final.Rds")
+  }
+
+  suppressWarnings(
+    arp_data_info <-
+      arp_data[, .(
+        total_observations = .N,
+        min = round(min(value, na.rm = TRUE), 1),
+        mean = round(mean(value, na.rm = TRUE), 1),
+        median = round(median(value, na.rm = TRUE), 1),
+        max = round(max(value, na.rm = TRUE), 1),
+        missing = sum(is.na(value))
+      ), by = .(amb_service, measure_code)])
+  arp_data_info[total_observations == missing, ':=' (min = NA, max = NA)]
+
+  return(arp_data_info)
+}
+
+
+examineCSTriggers <- function(phase = 1, showSDLimits = TRUE, SDLimits = 3) {
+  if(phase == 1) {
+    arp_data <- readRDS("data/arp_data1_final.Rds")
+    relevant_measure_codes <- paste0("15.", letters[2:6])
+  } else if(phase == 2.1) {
+    arp_data <- readRDS("data/arp_data2.1_final.Rds")
+    relevant_measure_codes <- paste0("15.", letters[2:8])
+  }
+
+  setorder(arp_data, measure_order)
+  call_levels <- unique(arp_data[substr(measure_code, 1, 4) %in% relevant_measure_codes, call_level])
+
+  i <- 1
+  while(i <= length(call_levels)) {
+    print(plotWeeklyCSTriggers(arp_data, call_levels[i], nSD = SDLimits, showSDLines = showSDLimits))
+
+    cmd <- readline(prompt="Press [enter] to continue; [b] to go back; or [q] to quit. Alternatively, enter a number to proceed (+ve) or move back (-ve) by: ")
+
+    if(!is.na(as.integer(cmd))) {
+      i <- i + as.integer(cmd)
+    } else if(tolower(cmd) == "q") {
+      break
+    } else if(tolower(cmd) == "b") {
+      i <- i - 1
+    } else {
+      i <- i + 1
+    }
+  }
 }
