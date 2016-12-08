@@ -75,6 +75,25 @@ getCallColPallete2.1 <- function() {
 }
 
 
+getCallColPallete2.2 <- function() {
+  rgb_colours <- list(all = c(0, 0, 0),
+                      category1 = c(112,48,160),
+                      category2Response = c(103,0,31),
+                      category2Transport = c(178,24,43),
+                      category3Response = c(230,85,13),
+                      category3Transport = c(253,190,133),
+                      category4Transport = c(0,68,27),
+                      category4HearAndTreat = c(90,174,97),
+                      uncoded = rep(100, 3))
+
+  pallete_cols <- substr(sapply(rgb_colours, function(col) {
+    return(rgb(col[1], col[2], col[3], 255, maxColorValue = 255))
+  }), 1, 7)
+
+  return(ggplot2::scale_colour_manual(name = "call types", limits = names(pallete_cols), breaks = names(pallete_cols), drop = TRUE, values = pallete_cols))
+}
+
+
 plotWeeklyVals <- function(data, measure_val, sub_measure_val = NA, measure_type_val = NA, call_level_vals = NA, show_call_level = FALSE, call_level_version = "1", nSD = 3, showSDLines = TRUE, highlightOutliers = TRUE) {
 
   plot_data <- copy(data[measure %in% measure_val & !is.na(value)])
@@ -247,7 +266,7 @@ identifyOutlyingAndMissingData <- function(data, nSD = 3) {
   outliers <- outlier_data[(abs(value - mn) / sd > nSD | is.na(value)), .(amb_service, week_beginning, measure_code, measure, sub_measure, measure_type, call_level, problem = paste0("outlier: >", nSD, "SDs"), value, measure_order)]
   outliers[is.na(value), problem := "missing"]
 
-  start_dates <- outliers[!is.na(value), .(strt_date = min(week_beginning)), by = amb_service]
+  start_dates <- outlier_data[!is.na(value), .(strt_date = min(week_beginning)), by = amb_service]
 
   outliers <- merge(outliers, start_dates, by = "amb_service")
   outliers <- outliers[week_beginning >= strt_date]
@@ -264,20 +283,20 @@ identifyOutlyingAndMissingData <- function(data, nSD = 3) {
 
 examineData <- function(phase = 1, outliers_SD = 3) {
 
-  if(!(phase %in% c(1, 2.1))) stop("Invalid phase")
+  if(!(phase %in% c(1, 2.1, 2.2))) stop("Invalid phase")
 
   if(phase == 1) {
     arp_data <- readRDS("data/arp_data1_final.Rds")
   } else if(phase == 2.1) {
     arp_data <- readRDS("data/arp_data2.1_final.Rds")
+  }  else if(phase == 2.2) {
+    arp_data <- readRDS("data/arp_data2.2_final.Rds")
   }
 
+  setorder(arp_data, measure_order)
   measures <- unique(arp_data[, .(measure, sub_measure, measure_type, call_level, measure_order)])
-  setorder(measures, measure_order)
 
   measure_code_lookup <- arp_data[, .(position = min(measure_order)), by = measure_code]
-
-  #  print(plotWeeklyVals(arp_data, "Total number of calls answered", "any origin", show_call_level = TRUE, call_level_version = "1"))
 
   i <- 1
   while(i <= nrow(measures)) {
@@ -307,12 +326,14 @@ examineData <- function(phase = 1, outliers_SD = 3) {
 
 
 examineProblematicData <- function(phase = 1, measuresCombined = TRUE, outliersAtSD = 3) {
-  if(!(phase %in% c(1, 2.1))) stop("Invalid phase")
+  if(!(phase %in% c(1, 2.1, 2.2))) stop("Invalid phase")
 
   if(phase == 1) {
     arp_data <- readRDS("data/arp_data1_final.Rds")
   } else if(phase == 2.1) {
     arp_data <- readRDS("data/arp_data2.1_final.Rds")
+  } else if(phase == 2.2) {
+    arp_data <- readRDS("data/arp_data2.2_final.Rds")
   }
 
   outlying_or_missing <- identifyOutlyingAndMissingData(arp_data, outliersAtSD)
@@ -381,12 +402,14 @@ examineProblematicData <- function(phase = 1, measuresCombined = TRUE, outliersA
 
 
 getARPSUmmaryData <- function(phase = 1) {
-  if(!(phase %in% c(1, 2.1))) stop("Invalid phase")
+  if(!(phase %in% c(1, 2.1, 2.2))) stop("Invalid phase")
 
   if(phase == 1) {
     arp_data <- readRDS("data/arp_data1_final.Rds")
   } else if(phase == 2.1) {
     arp_data <- readRDS("data/arp_data2.1_final.Rds")
+  } else if(phase == 2.2) {
+    arp_data <- readRDS("data/arp_data2.2_final.Rds")
   }
 
   suppressWarnings(
@@ -406,11 +429,16 @@ getARPSUmmaryData <- function(phase = 1) {
 
 
 examineCSTriggers <- function(phase = 1, showSDLimits = TRUE, SDLimits = 3) {
+  if(!(phase %in% c(1, 2.1, 2.2))) stop("Invalid phase")
+
   if(phase == 1) {
     arp_data <- readRDS("data/arp_data1_final.Rds")
     relevant_measure_codes <- paste0("15.", letters[2:6])
   } else if(phase == 2.1) {
     arp_data <- readRDS("data/arp_data2.1_final.Rds")
+    relevant_measure_codes <- paste0("15.", letters[2:8])
+  } else if(phase == 2.2) {
+    arp_data <- readRDS("data/arp_data2.2_final.Rds")
     relevant_measure_codes <- paste0("15.", letters[2:8])
   }
 
