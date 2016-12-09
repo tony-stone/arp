@@ -2,9 +2,10 @@ library(data.table)
 
 # Once the raw data has been read in, see "data-raw/read arp1 data.R" and "data-raw/read arp2.1 data.R",
 # process it:
-processARP1Data()
-processARP2.1Data()
-processARP2.2Data()
+processARPData(phase = 1)
+processARPData(phase = 2.1)
+processARPData(phase = 2.2)
+
 
 # How does it look?
 summ_data1 <- getARPSUmmaryData(phase = 1)
@@ -18,6 +19,7 @@ View(summ_data2.2)
 
 # Well that was horrible, how does the missingness (by service/time) look graphically?
 examineProblematicData(phase = 1, measuresCombined = TRUE)
+examineProblematicData(phase = 1, measuresCombined = TRUE, startDate = as.Date("2015-08-31"), endDate = as.Date("2016-09-30"))
 examineProblematicData(phase = 2.1, measuresCombined = TRUE)
 missing_and_outlying <- examineProblematicData(phase = 2.2, measuresCombined = TRUE)
 
@@ -25,17 +27,18 @@ missing_and_outlying <- examineProblematicData(phase = 2.2, measuresCombined = T
 View(missing_and_outlying)
 
 # What's missing and what's "outlying"? (by measure/service/time)
-examineProblematicData(phase = 1, measuresCombined = FALSE, outliersAtSD = 3)
+examineProblematicData(phase = 1, measuresCombined = FALSE)
+examineProblematicData(phase = 1, measuresCombined = FALSE, outliersAtSD = 3, startDate = as.Date("2015-08-31"), endDate = as.Date("2016-09-30"))
 examineProblematicData(phase = 2.1, measuresCombined = FALSE, outliersAtSD = 3)
 examineProblematicData(phase = 2.2, measuresCombined = FALSE, outliersAtSD = 3)
 
 # Now let's look measure by measure
-examineData(phase = 1, outliers_SD = 3)
+examineData(phase = 1, outliers_SD = 3, startDate = as.Date("2015-08-31"), endDate = as.Date("2016-09-30"))
 examineData(phase = 2.1, outliers_SD = 3)
 examineData(phase = 2.2, outliers_SD = 3)
 
-m17# Can (somewhat naively) also just look at the Call Start Triggers
-examineCSTriggers(phase = 1, showSDLimits = TRUE, SDLimits = 3)
+# Can (somewhat naively) also just look at the Call Start Triggers
+examineCSTriggers(phase = 1, showSDLimits = TRUE, SDLimits = 3, startDate = as.Date("2015-08-31"), endDate = as.Date("2016-09-30"))
 examineCSTriggers(phase = 2.1, showSDLimits = TRUE, SDLimits = 3)
 examineCSTriggers(phase = 2.2, showSDLimits = TRUE, SDLimits = 3)
 
@@ -43,6 +46,25 @@ examineCSTriggers(phase = 2.2, showSDLimits = TRUE, SDLimits = 3)
 
 
 # Process ARP data --------------------------------------------------------
+
+
+processARPData <- function(phase = 1) {
+  if(!(as.character(phase) %in% as.character(c(1, 2.1, 2.2)))) stop("Invalid phase")
+
+  if(phase == 1) {
+    arp_data <- processARP1Data()
+  } else if(phase == 2.1) {
+    arp_data <- processARP2.1Data()
+  } else if(phase == 2.2) {
+    arp_data <- processARP2.2Data()
+  }
+
+  # remove trimmed mean data, not using
+  arp_data_final <- arp_data[measure_type != "trimmed mean"]
+
+  # save
+  saveRDS(arp_data_final, file = paste0("data/arp_data", phase, "_final.Rds"))
+}
 
 processARP1Data <- function() {
 
@@ -84,7 +106,7 @@ processARP1Data <- function() {
   ## Remove 8a for AMPDS sites
   arp_data <- arp_data[triage_system  != "AMPDS" | (triage_system  == "AMPDS" & measure_code != "8a")]
 
-  ## Remove G1; G3 (for measures other than call totals) for SECAmb
+  ## Remove G1 + G3 for SECAmb (but keep G3 for call totals)
   arp_data <- arp_data[!(amb_service == "SECAMB" & (call_level == "green1" | (call_level == "green3" & measure != "Total number of calls answered")))]
 
   ## Remove G1 + G3 for WMAS
@@ -99,9 +121,8 @@ processARP1Data <- function() {
   arp_data[fix_percentage == TRUE, value := value / 100]
   arp_data[, fix_percentage := NULL]
 
-  # save
-  arp_data1_final <- arp_data
-  saveRDS(arp_data1_final, file = "data/arp_data1_final.Rds")
+  # return
+  return(arp_data)
 }
 
 
@@ -126,8 +147,9 @@ processARP2.1Data <- function() {
   arp_data[, service_sheet_name := NULL]
 
   # Deal with conversion from Excel - turn warnings off (and on again after)
+  ## We can turn warnings off and on again after to avoid expected "NAs introduced by coercion" warnings, but be careful!
   old_warn_val <- getOption("warn")
-  options(warn = -1)
+  # options(warn = -1)
   arp_data[value_format_raw == "time", value := cleanTimes(value)]
   arp_data[value_format_raw == "date" & measure_code == "22", value := cleanDatetimes(value, 10000)]
   arp_data[value_format_raw == "date" & measure_code != "22" & amb_service == "NEAS", value := cleanDatetimes(value, 20)]
@@ -146,8 +168,9 @@ processARP2.1Data <- function() {
 
   ## Clearly YAS did not supply a 7day period of data for the first week (w/b: 2016-04-18). Remove
   arp_data2.1_final <- arp_data2.1_final[amb_service != "YAS" | week_beginning != as.Date("2016-04-18")]
-  # save
-  saveRDS(arp_data2.1_final, file = "data/arp_data2.1_final.Rds")
+
+
+  return(arp_data2.1_final)
 }
 
 
@@ -172,8 +195,9 @@ processARP2.2Data <- function() {
   arp_data[, service_sheet_name := NULL]
 
   # Deal with conversion from Excel - turn warnings off (and on again after)
+  ## We can turn warnings off and on again after to avoid expected "NAs introduced by coercion" warnings, but be careful!
   old_warn_val <- getOption("warn")
-  options(warn = -1)
+  # options(warn = -1)
   arp_data[value_format_raw == "time", value := cleanTimes(value)]
   arp_data[value_format_raw == "date" & measure_code == "22", value := cleanDatetimes(value, 10000)]
   arp_data[value_format_raw == "date" & measure_code != "22" & amb_service == "NEAS", value := cleanDatetimes(value, 20)]
@@ -190,9 +214,6 @@ processARP2.2Data <- function() {
   ## Remove 8a for AMPDS sites
   arp_data2.2_final <- arp_data[triage_system  != "AMPDS" | (triage_system  == "AMPDS" & measure_code != "8a")]
 
-  ## Clearly YAS did not supply a 7day period of data for the first week (w/b: 2016-04-18). Remove
-  #arp_data2.2_final <- arp_data2.2_final[amb_service != "YAS" | week_beginning != as.Date("2016-04-18")]
-  # save
-  saveRDS(arp_data2.2_final, file = "data/arp_data2.2_final.Rds")
+  return(arp_data2.2_final)
 }
 

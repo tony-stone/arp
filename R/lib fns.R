@@ -201,9 +201,9 @@ plotWeeklyVals <- function(data, measure_val, sub_measure_val = NA, measure_type
 
   plot <- plot +
     ggplot2::ggtitle(title_text)  +
-    ggplot2::facet_wrap(~amb_service, ncol = 2, scales = "free") +
+    ggplot2::facet_wrap(~amb_service, ncol = 2, scales = "free_y") +
     ggplot2::geom_line(size = 1) +
-    ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "1 week", expand = c(0, 2)) +
+    ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "2 weeks", expand = c(0, 2)) +
     ggplot2::scale_y_continuous(labels = scales::comma) +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0))
 
@@ -281,7 +281,7 @@ identifyOutlyingAndMissingData <- function(data, nSD = 3) {
 }
 
 
-examineData <- function(phase = 1, outliers_SD = 3) {
+examineData <- function(phase = 1, outliers_SD = 3, startDate = -Inf, endDate = Inf) {
 
   if(!(phase %in% c(1, 2.1, 2.2))) stop("Invalid phase")
 
@@ -292,6 +292,8 @@ examineData <- function(phase = 1, outliers_SD = 3) {
   }  else if(phase == 2.2) {
     arp_data <- readRDS("data/arp_data2.2_final.Rds")
   }
+
+  arp_data <- arp_data[week_beginning >= startDate & week_beginning <= endDate]
 
   setorder(arp_data, measure_order)
   measures <- unique(arp_data[, .(measure, sub_measure, measure_type, call_level, measure_order)])
@@ -325,7 +327,7 @@ examineData <- function(phase = 1, outliers_SD = 3) {
 }
 
 
-examineProblematicData <- function(phase = 1, measuresCombined = TRUE, outliersAtSD = 3) {
+examineProblematicData <- function(phase = 1, measuresCombined = TRUE, outliersAtSD = 3, startDate = -Inf, endDate = Inf) {
   if(!(phase %in% c(1, 2.1, 2.2))) stop("Invalid phase")
 
   if(phase == 1) {
@@ -335,6 +337,8 @@ examineProblematicData <- function(phase = 1, measuresCombined = TRUE, outliersA
   } else if(phase == 2.2) {
     arp_data <- readRDS("data/arp_data2.2_final.Rds")
   }
+
+  arp_data <- arp_data[week_beginning >= startDate & week_beginning <= endDate]
 
   outlying_or_missing <- identifyOutlyingAndMissingData(arp_data, outliersAtSD)
 
@@ -374,7 +378,6 @@ examineProblematicData <- function(phase = 1, measuresCombined = TRUE, outliersA
       plot <- ggplot2::ggplot(outlying_or_missing[amb_service == services[i]], ggplot2::aes(x = week_beginning, y = measure_order_factor, fill = problem)) +
         ggplot2::labs(title = paste0(services[i], " problematic data by week and problem"), x = "week beginning", y = "measure code") +
         ggplot2::geom_tile() +
-        ggplot2::coord_fixed(ratio = 1/7) +
         ggplot2::facet_wrap(~measure_set, ncol = 2, scales = "free_y") +
         ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "2 weeks", expand = c(0, 0)) +
         ggplot2::scale_y_discrete() +
@@ -401,7 +404,7 @@ examineProblematicData <- function(phase = 1, measuresCombined = TRUE, outliersA
 }
 
 
-getARPSUmmaryData <- function(phase = 1) {
+getARPSUmmaryData <- function(phase = 1, startDate = -Inf, endDate = Inf) {
   if(!(phase %in% c(1, 2.1, 2.2))) stop("Invalid phase")
 
   if(phase == 1) {
@@ -411,6 +414,8 @@ getARPSUmmaryData <- function(phase = 1) {
   } else if(phase == 2.2) {
     arp_data <- readRDS("data/arp_data2.2_final.Rds")
   }
+
+  arp_data <- arp_data[week_beginning >= startDate & week_beginning <= endDate]
 
   suppressWarnings(
     arp_data_info <-
@@ -428,7 +433,7 @@ getARPSUmmaryData <- function(phase = 1) {
 }
 
 
-examineCSTriggers <- function(phase = 1, showSDLimits = TRUE, SDLimits = 3) {
+examineCSTriggers <- function(phase = 1, showSDLimits = TRUE, SDLimits = 3, startDate = -Inf, endDate = Inf) {
   if(!(phase %in% c(1, 2.1, 2.2))) stop("Invalid phase")
 
   if(phase == 1) {
@@ -441,6 +446,8 @@ examineCSTriggers <- function(phase = 1, showSDLimits = TRUE, SDLimits = 3) {
     arp_data <- readRDS("data/arp_data2.2_final.Rds")
     relevant_measure_codes <- paste0("15.", letters[2:8])
   }
+
+  arp_data <- arp_data[week_beginning >= startDate & week_beginning <= endDate]
 
   setorder(arp_data, measure_order)
   call_levels <- unique(arp_data[substr(measure_code, 1, 4) %in% relevant_measure_codes, call_level])
