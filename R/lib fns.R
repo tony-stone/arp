@@ -1,3 +1,189 @@
+processARPData <- function(phase = 1) {
+  if(!(as.character(phase) %in% as.character(c(1, 2.1, 2.2)))) stop("Invalid phase")
+
+  if(phase == 1) {
+    arp_data <- processARP1Data()
+  } else if(phase == 2.1) {
+    arp_data <- processARP2.1Data()
+  } else if(phase == 2.2) {
+    arp_data <- processARP2.2Data()
+  }
+
+  # remove trimmed mean data, not using
+  arp_data_final <- arp_data[measure_type != "trimmed mean"]
+
+  # save
+  saveRDS(arp_data_final, file = paste0("data/arp_data", phase, "_final.Rds"))
+  print(paste0("File saved: ", "data/arp_data", phase, "_final.Rds"))
+}
+
+processARP1Data <- function() {
+
+  load("data/auxillary_data1.Rda")
+  load("data/arp_data1_raw.Rda")
+
+  # make wide then long again so we can assess missingness
+  arp_data_wide <- dcast(arp_data1,
+                         service_sheet_name + measure_code ~ week_beginning,
+                         fill = NA,
+                         drop = FALSE,
+                         value.var = "value")
+
+  arp_data <- melt(arp_data_wide, id.vars = c("service_sheet_name", "measure_code"), variable.name = "week_beginning", value.name = "value", variable.factor = FALSE)
+
+  # Merge in info about measures/services -----------------------------------
+
+  arp_data <- merge(arp_data, measures_data1, by = "measure_code")
+  arp_data <- merge(arp_data, service_data1, by.x = "service_sheet_name", by.y = "sheet_name")
+  arp_data[, service_sheet_name := NULL]
+
+  # Deal with conversion from Excel
+  ## We can turn warnings off and on again after to avoid expected "NAs introduced by coercion" warnings, but be careful!
+  old_warn_val <- getOption("warn")
+  # options(warn = -1)
+  arp_data[value_format_raw == "time", value := cleanTimes(value)]
+  arp_data[value_format_raw == "date" & measure_code == "22", value := cleanDatetimes(value, 10000)]
+  arp_data[value_format_raw == "date" & measure_code != "22" & amb_service == "NEAS", value := cleanDatetimes(value, 20)]
+  arp_data[value_format_raw == "date" & measure_code != "22" & amb_service != "NEAS", value := cleanDatetimes(value, 150)]
+
+  # Convert values to type double
+  arp_data[, value := as.double(value)]
+  options(warn = old_warn_val)
+
+  # Convert week beginnings to type date
+  arp_data[, week_beginning := as.Date(as.integer(substr(week_beginning, 6, nchar(week_beginning))), origin = "1899-12-30")]
+
+  # Remove specific measures
+  ## Remove 8a for AMPDS sites
+  arp_data <- arp_data[triage_system  != "AMPDS" | (triage_system  == "AMPDS" & measure_code != "8a")]
+
+  ## Remove G1 + G3 for SECAmb (but keep G3 for call totals)
+  arp_data <- arp_data[!(amb_service == "SECAMB" & (call_level == "green1" | (call_level == "green3" & measure != "Total number of calls answered")))]
+
+  ## Remove G1 + G3 for WMAS
+  arp_data <- arp_data[!(amb_service == "WMAS" & (call_level == "green1" | call_level == "green3"))]
+
+  ## Remove Hours lost at turnaround (whole hours)
+  arp_data <- arp_data[!(measure_code == "17.2")]
+
+  # Remove time periods
+  ## Remove all data before 2014-10-06
+  arp_data <- arp_data[!(week_beginning < as.Date("2014-10-06"))]
+
+  ## SWAS / YAS Phase 2 began 2016-04-18
+  arp_data <- arp_data[!((amb_service == "SWAS" | amb_service == "YAS") & week_beginning >= as.Date("2016-04-18"))]
+
+  ## WMAS Phase 2 began 2016-06-06
+  arp_data <- arp_data[!(amb_service == "WMAS" & week_beginning >= as.Date("2016-06-06"))]
+
+
+
+  # Fix percentages
+  arp_data <- merge(arp_data,
+                    arp_data[measure == "Clock start triggers", .(sum = sum(value, na.rm = TRUE)), by = .(amb_service, week_beginning, measure, call_level)][sum > 95 & sum < 105, .(amb_service, week_beginning, measure, call_level, fix_percentage = TRUE)],
+                    by = c("amb_service", "week_beginning", "measure", "call_level"),
+                    all = TRUE)
+
+  arp_data[fix_percentage == TRUE, value := value / 100]
+  arp_data[, fix_percentage := NULL]
+
+  # return
+  return(arp_data)
+}
+
+
+processARP2.1Data <- function() {
+
+  load("data/auxillary_data2.1.Rda")
+  load("data/arp_data2.1_raw.Rda")
+
+  # make wide then long again so we can assess missingness
+  arp_data_wide <- dcast(arp_data2.1,
+                         service_sheet_name + measure_code ~ week_beginning,
+                         fill = NA,
+                         drop = FALSE,
+                         value.var = "value")
+
+  arp_data <- melt(arp_data_wide, id.vars = c("service_sheet_name", "measure_code"), variable.name = "week_beginning", value.name = "value", variable.factor = FALSE)
+
+  # Merge in info about measures/services -----------------------------------
+
+  arp_data <- merge(arp_data, measures_data2.1, by = "measure_code")
+  arp_data <- merge(arp_data, service_data2.1, by.x = "service_sheet_name", by.y = "sheet_name")
+  arp_data[, service_sheet_name := NULL]
+
+  # Deal with conversion from Excel - turn warnings off (and on again after)
+  ## We can turn warnings off and on again after to avoid expected "NAs introduced by coercion" warnings, but be careful!
+  old_warn_val <- getOption("warn")
+  # options(warn = -1)
+  arp_data[value_format_raw == "time", value := cleanTimes(value)]
+  arp_data[value_format_raw == "date" & measure_code == "22", value := cleanDatetimes(value, 10000)]
+  arp_data[value_format_raw == "date" & measure_code != "22" & amb_service == "NEAS", value := cleanDatetimes(value, 20)]
+  arp_data[value_format_raw == "date" & measure_code != "22" & amb_service != "NEAS", value := cleanDatetimes(value, 150)]
+
+  # Convert values to type double
+  arp_data[, value := as.double(value)]
+  options(warn = old_warn_val)
+
+  # Convert week beginnings to type date
+  arp_data[, week_beginning := as.Date(as.integer(substr(week_beginning, 6, nchar(week_beginning))), origin = "1899-12-30")]
+
+  # Remove specific measures
+  ## Remove 8a for AMPDS sites
+  arp_data2.1_final <- arp_data[triage_system  != "AMPDS" | (triage_system  == "AMPDS" & measure_code != "8a")]
+
+  ## Clearly YAS did not supply a 7day period of data for the first week (w/b: 2016-04-18). Remove
+  arp_data2.1_final <- arp_data2.1_final[amb_service != "YAS" | week_beginning != as.Date("2016-04-18")]
+
+
+  return(arp_data2.1_final)
+}
+
+
+processARP2.2Data <- function() {
+
+  load("data/auxillary_data2.2.Rda")
+  load("data/arp_data2.2_raw.Rda")
+
+  # make wide then long again so we can assess missingness
+  arp_data_wide <- dcast(arp_data2.2,
+                         service_sheet_name + measure_code ~ week_beginning,
+                         fill = NA,
+                         drop = FALSE,
+                         value.var = "value")
+
+  arp_data <- melt(arp_data_wide, id.vars = c("service_sheet_name", "measure_code"), variable.name = "week_beginning", value.name = "value", variable.factor = FALSE)
+
+  # Merge in info about measures/services -----------------------------------
+
+  arp_data <- merge(arp_data, measures_data2.2, by = "measure_code")
+  arp_data <- merge(arp_data, service_data2.2, by.x = "service_sheet_name", by.y = "sheet_name")
+  arp_data[, service_sheet_name := NULL]
+
+  # Deal with conversion from Excel - turn warnings off (and on again after)
+  ## We can turn warnings off and on again after to avoid expected "NAs introduced by coercion" warnings, but be careful!
+  old_warn_val <- getOption("warn")
+  # options(warn = -1)
+  arp_data[value_format_raw == "time", value := cleanTimes(value)]
+  arp_data[value_format_raw == "date" & measure_code == "22", value := cleanDatetimes(value, 10000)]
+  arp_data[value_format_raw == "date" & measure_code != "22" & amb_service == "NEAS", value := cleanDatetimes(value, 20)]
+  arp_data[value_format_raw == "date" & measure_code != "22" & amb_service != "NEAS", value := cleanDatetimes(value, 150)]
+
+  # Convert values to type double
+  arp_data[, value := as.double(value)]
+  options(warn = old_warn_val)
+
+  # Convert week beginnings to type date
+  arp_data[, week_beginning := as.Date(as.integer(substr(week_beginning, 6, nchar(week_beginning))), origin = "1899-12-30")]
+
+  # Remove specific measures
+  ## Remove 8a for AMPDS sites
+  arp_data2.2_final <- arp_data[triage_system  != "AMPDS" | (triage_system  == "AMPDS" & measure_code != "8a")]
+
+  return(arp_data2.2_final)
+}
+
+
 cleanTimes <- function(t1) {
   t1_numeric <- as.double(t1) * 1440
 
@@ -91,6 +277,14 @@ getCallColPallete2.2 <- function() {
   }), 1, 7)
 
   return(ggplot2::scale_colour_manual(name = "call types", limits = names(pallete_cols), breaks = names(pallete_cols), drop = TRUE, values = pallete_cols))
+}
+
+
+getProblematicColourPallete <- function(nSD) {
+  pallete_cols <- c("#F8766D", "#00BFC4")
+  names(pallete_cols) <- c("missing", paste0("outlier: >", nSD, "SDs"))
+
+  return(ggplot2::scale_fill_manual(values = pallete_cols))
 }
 
 
@@ -381,7 +575,10 @@ examineProblematicData <- function(phase = 1, measuresCombined = TRUE, outliersA
         ggplot2::facet_wrap(~measure_set, ncol = 2, scales = "free_y") +
         ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "2 weeks", expand = c(0, 0)) +
         ggplot2::scale_y_discrete() +
-        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0))
+        getProblematicColourPallete(outliersAtSD) +
+        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0),
+                       strip.background = ggplot2::element_blank(),
+                       strip.text.x = ggplot2::element_blank())
 
       print(plot)
 
@@ -404,7 +601,7 @@ examineProblematicData <- function(phase = 1, measuresCombined = TRUE, outliersA
 }
 
 
-getARPSUmmaryData <- function(phase = 1, startDate = -Inf, endDate = Inf) {
+getARPSummaryData <- function(phase = 1, startDate = -Inf, endDate = Inf) {
   if(!(phase %in% c(1, 2.1, 2.2))) stop("Invalid phase")
 
   if(phase == 1) {
@@ -467,5 +664,81 @@ examineCSTriggers <- function(phase = 1, showSDLimits = TRUE, SDLimits = 3, star
     } else {
       i <- i + 1
     }
+  }
+}
+
+
+
+saveProblematicDataImages <- function(phase = 1, measuresCombined = TRUE, outliersAtSD = 3, startDate = -Inf, endDate = Inf) {
+  if(!(phase %in% c(1, 2.1, 2.2))) stop("Invalid phase")
+
+  if(phase == 1) {
+    arp_data <- readRDS("data/arp_data1_final.Rds")
+  } else if(phase == 2.1) {
+    arp_data <- readRDS("data/arp_data2.1_final.Rds")
+  } else if(phase == 2.2) {
+    arp_data <- readRDS("data/arp_data2.2_final.Rds")
+  }
+
+  arp_data <- arp_data[week_beginning >= startDate & week_beginning <= endDate]
+
+  outlying_or_missing <- identifyOutlyingAndMissingData(arp_data, outliersAtSD)
+
+  if(measuresCombined) {
+
+    # missingness by week and service (across all measures)
+    arp_data_weekly_missingness <-
+      arp_data[, .(N = .N, missing = sum(is.na(value))), by = .(amb_service, week_beginning)]
+    arp_data_weekly_missingness[, missing_pc := round(missing / N, 3) * 100]
+
+    plot <- ggplot2::ggplot(arp_data_weekly_missingness[missing_pc != 100], ggplot2::aes(x = week_beginning, y = amb_service, fill = missing_pc)) +
+      ggplot2::labs(title = "Missing data by service and week", x = "week beginning", y = "ambulance service")  +
+      ggplot2::geom_tile(colour = "white", size = 0.1) +
+      ggplot2::coord_fixed(ratio = 7) +
+      ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "1 week", expand = c(0, 0)) +
+      ggplot2::scale_y_discrete(limits = sort(unique(arp_data_weekly_missingness[, amb_service]), decreasing = TRUE)) +
+      ggplot2::scale_fill_continuous(low = "#ffffcc", high = "#800026", guide = ggplot2::guide_colourbar("Missing values (%)")) +
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0), legend.position = "bottom", panel.grid = ggplot2::element_blank())
+
+    ggplot2::ggsave(paste0("ARP Phase", phase, " - problematic data - all measures, services combined - ", format(Sys.time(), "%Y-%m-%d %H.%M.%S"), ".png"),
+                    plot,
+                    path = paste0("output_images/phase", phase, "/"),
+                    width = 30, height = 20, units = "cm")
+
+  } else {
+
+    services <- sort(unique(arp_data$amb_service))
+
+    setorder(outlying_or_missing, -measure_order)
+    measure_codes <- unique(outlying_or_missing[, measure_code])
+    outlying_or_missing[, measure_order_factor := factor(measure_code, levels = measure_codes, ordered = TRUE)]
+
+    outlying_or_missing[, measure_set := as.integer(measure_order > median(unique(measure_order))) + 1L, by = amb_service]
+
+    invisible(lapply(services, function(service, data, nSD) {
+      if (data[amb_service == service, .N] == 0) {
+        print(paste0(service, " has no problematic data."))
+        i <- i + 1
+      } else {
+      plot <- ggplot2::ggplot(data[amb_service == service], ggplot2::aes(x = week_beginning, y = measure_order_factor, fill = problem)) +
+        ggplot2::labs(title = paste0(service, " problematic data by week and problem"), x = "week beginning", y = "measure code") +
+        ggplot2::geom_tile() +
+        ggplot2::facet_wrap(~measure_set, ncol = 2, scales = "free_y") +
+        ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "2 weeks", expand = c(0, 0)) +
+        ggplot2::scale_y_discrete() +
+        getProblematicColourPallete(nSD) +
+        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0),
+                       strip.background = ggplot2::element_blank(),
+                       strip.text.x = ggplot2::element_blank())
+
+      ggplot2::ggsave(paste0("ARP Phase", phase, " - problematic data - all measures, ", service," - ", format(Sys.time(), "%Y-%m-%d %H.%M.%S"), ".png"),
+                      plot,
+                      path = paste0("output_images/phase", phase, "/"),
+                      width = 30, height = 20, units = "cm")
+
+      print(paste0("Saved image: ", service))
+      }
+    }, data = outlying_or_missing, nSD = outliersAtSD))
+
   }
 }
