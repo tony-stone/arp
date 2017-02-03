@@ -9,3 +9,5 @@ data/**/*
 data/*
 test/**/*
 test/*
+output_images/*
+output_images/**/*
