@@ -6,7 +6,7 @@ load("data/auxillary_data1.Rda")
 
 # Read in service data ----------------------------------------------------
 arp_service_list <- lapply(service_data1$sheet_name, function(service) {
-  data_wide <- data.table(read.xlsx("data-raw/src data/phase 1 data/Ambulance Response Programme   - 14112016 National Collation.xlsx", sheet = service, rows = 2:219, colNames = FALSE, skipEmptyRows = TRUE))
+  data_wide <- data.table(read.xlsx("data-raw/src data/phase 1 data/Ambulance Response Programme   - 08012017 National Collation.xlsx", sheet = service, rows = 2:219, colNames = FALSE, skipEmptyRows = TRUE))
   suppressWarnings(setnames(data_wide, c("measure_code", "measure_descr", "sub_measure", "data_format", make.unique(paste0("date_", as.integer(data_wide[1, 5:ncol(data_wide), with = FALSE]))))))
   data_wide[, row_num := as.integer(row.names(data_wide))]
 
@@ -15,8 +15,8 @@ arp_service_list <- lapply(service_data1$sheet_name, function(service) {
   data_wide[measure_code == "Hours", measure_code := "22"]
 
   # Correction to WMAS formatting
-  if(service == "WMAS" & data_wide[1, date_NA.1] == "WC \n16/11/2015") {
-    setnames(data_wide, "date_NA.1", "date_42324")
+  if(service == "WMAS" & data_wide[1, date_NA] == "WC \n16/11/2015") {
+    setnames(data_wide, "date_NA", "date_42324")
   }
 
   # Keep only measure code columns and data
@@ -37,9 +37,9 @@ arp_service_list <- lapply(service_data1$sheet_name, function(service) {
 # Bind data into one dt
 arp_data1 <- rbindlist(arp_service_list)
 
-# Process histoic phase 1 data
+# Process historic phase 1 data
 arp_service_historic_list <- lapply(service_data1$sheet_name, function(service) {
-  data_wide <- data.table(read.xlsx("data-raw/src data/phase 1 historic data/Ambulance Response Programme - Historical National Collation v7.xlsx", sheet = service, rows = 2:219, colNames = FALSE, skipEmptyRows = TRUE))
+  data_wide <- data.table(read.xlsx("data-raw/src data/phase 1 historic data/Ambulance Response Programme - Historical National Collation v7 edited.xlsx", sheet = service, rows = 2:219, colNames = FALSE, skipEmptyRows = TRUE))
   suppressWarnings(setnames(data_wide, c("measure_code", "measure_descr", "sub_measure", "data_format", make.unique(paste0("date_", as.integer(data_wide[1, 5:ncol(data_wide), with = FALSE]))))))
   data_wide[, row_num := as.integer(row.names(data_wide))]
 
