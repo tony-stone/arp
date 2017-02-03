@@ -569,16 +569,30 @@ examineProblematicData <- function(phase = 1, measuresCombined = TRUE, outliersA
         i <- i + 1
         next
       }
+
+      if (length(unique(outlying_or_missing[amb_service == services[i], week_beginning])) < 15) {
+        date_breaks_int <- "1 week"
+      } else {
+        date_breaks_int <- "2 weeks"
+      }
+
       plot <- ggplot2::ggplot(outlying_or_missing[amb_service == services[i]], ggplot2::aes(x = week_beginning, y = measure_order_factor, fill = problem)) +
         ggplot2::labs(title = paste0(services[i], " problematic data by week and problem"), x = "week beginning", y = "measure code") +
-        ggplot2::geom_tile() +
-        ggplot2::facet_wrap(~measure_set, ncol = 2, scales = "free_y") +
-        ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "2 weeks", expand = c(0, 0)) +
+        ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = date_breaks_int, expand = c(0, 0)) +
         ggplot2::scale_y_discrete() +
         getProblematicColourPallete(outliersAtSD) +
         ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0),
                        strip.background = ggplot2::element_blank(),
                        strip.text.x = ggplot2::element_blank())
+
+      if (length(unique(outlying_or_missing[amb_service == services[i], measure_code])) < 60) {
+        plot <- plot + ggplot2::geom_tile(colour = "white", size = 0.1) +
+          ggplot2::coord_fixed(ratio = 7) +
+          ggplot2::theme(panel.grid = ggplot2::element_blank())
+      } else {
+        plot <- plot + ggplot2::geom_tile() +
+          ggplot2::facet_wrap(~measure_set, ncol = 2, scales = "free_y")
+      }
 
       print(plot)
 
@@ -720,16 +734,30 @@ saveProblematicDataImages <- function(phase = 1, measuresCombined = TRUE, outlie
         print(paste0(service, " has no problematic data."))
         i <- i + 1
       } else {
+
+        if (length(unique(data[amb_service == service, week_beginning])) < 15) {
+          date_breaks_int <- "1 week"
+        } else {
+          date_breaks_int <- "2 weeks"
+        }
+
       plot <- ggplot2::ggplot(data[amb_service == service], ggplot2::aes(x = week_beginning, y = measure_order_factor, fill = problem)) +
         ggplot2::labs(title = paste0(service, " problematic data by week and problem"), x = "week beginning", y = "measure code") +
-        ggplot2::geom_tile() +
-        ggplot2::facet_wrap(~measure_set, ncol = 2, scales = "free_y") +
-        ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "2 weeks", expand = c(0, 0)) +
+        ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = date_breaks_int, expand = c(0, 0)) +
         ggplot2::scale_y_discrete() +
         getProblematicColourPallete(nSD) +
         ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 0),
                        strip.background = ggplot2::element_blank(),
                        strip.text.x = ggplot2::element_blank())
+
+      if (length(unique(data[amb_service == service, measure_code])) < 60) {
+        plot <- plot + ggplot2::geom_tile(colour = "white", size = 0.1) +
+          ggplot2::coord_fixed(ratio = 7) +
+          ggplot2::theme(panel.grid = ggplot2::element_blank())
+      } else {
+        plot <- plot + ggplot2::geom_tile() +
+          ggplot2::facet_wrap(~measure_set, ncol = 2, scales = "free_y")
+      }
 
       ggplot2::ggsave(paste0("ARP Phase", phase, " - problematic data - all measures, ", service," - ", format(Sys.time(), "%Y-%m-%d %H.%M.%S"), ".png"),
                       plot,

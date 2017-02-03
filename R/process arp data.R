@@ -34,7 +34,9 @@ examineProblematicData(phase = 1, measuresCombined = FALSE, outliersAtSD = 3, st
 saveProblematicDataImages(phase = 1, measuresCombined = FALSE, outliersAtSD = 3, startDate = as.Date("2014-10-06"), endDate = as.Date("2016-09-30"))
 
 examineProblematicData(phase = 2.1, measuresCombined = FALSE, outliersAtSD = 3)
-examineProblematicData(phase = 2.2, measuresCombined = FALSE, outliersAtSD = 3)
+
+examineProblematicData(phase = 2.2, measuresCombined = FALSE, outliersAtSD = 3, endDate = as.Date("2017-01-02"))
+saveProblematicDataImages(phase = 2.2, measuresCombined = FALSE, outliersAtSD = 3, endDate = as.Date("2017-01-02"))
 
 # Now let's look measure by measure
 examineData(phase = 1, outliers_SD = 3, startDate = as.Date("2014-10-06"), endDate = as.Date("2016-09-30"))
