@@ -130,11 +130,14 @@ processARP2.1Data <- function() {
 
   # Remove specific measures
   ## Remove 8a for AMPDS sites
-  arp_data2.1_final <- arp_data[triage_system  != "AMPDS" | (triage_system  == "AMPDS" & measure_code != "8a")]
+  arp_data2.1_final <- arp_data[!(triage_system  == "AMPDS" & measure_code == "8a")]
 
+  # Remove specific time periods
   ## Clearly YAS did not supply a 7day period of data for the first week (w/b: 2016-04-18). Remove
-  arp_data2.1_final <- arp_data2.1_final[amb_service != "YAS" | week_beginning != as.Date("2016-04-18")]
+  arp_data2.1_final <- arp_data2.1_final[!(amb_service == "YAS" & week_beginning == as.Date("2016-04-18"))]
 
+  ## WMAS moved to Phase 2 began 2016-10-10
+  arp_data2.1_final <- arp_data2.1_final[!(amb_service == "WMAS" & week_beginning == as.Date("2016-10-10"))]
 
   return(arp_data2.1_final)
 }
