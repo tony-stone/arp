@@ -6,7 +6,7 @@ load("data/auxillary_data1.Rda")
 
 # Read in service data ----------------------------------------------------
 arp_service_list <- lapply(service_data1$sheet_name, function(service) {
-  data_wide <- data.table(read.xlsx("data-raw/src data/phase 1 data/Ambulance Response Programme   - 08012017 National Collation.xlsx", sheet = service, rows = 2:219, colNames = FALSE, skipEmptyRows = TRUE))
+  data_wide <- data.table(read.xlsx("data-raw/src data/phase 1 data/Ambulance Response Programme   - 08012017 National Collation edited TO SEND TO ANNABEL.xlsx", sheet = service, rows = 2:219, colNames = FALSE, skipEmptyRows = TRUE))
   suppressWarnings(setnames(data_wide, c("measure_code", "measure_descr", "sub_measure", "data_format", make.unique(paste0("date_", as.integer(data_wide[1, 5:ncol(data_wide), with = FALSE]))))))
   data_wide[, row_num := as.integer(row.names(data_wide))]
 
@@ -39,7 +39,7 @@ arp_data1 <- rbindlist(arp_service_list)
 
 # Process historic phase 1 data
 arp_service_historic_list <- lapply(service_data1$sheet_name, function(service) {
-  data_wide <- data.table(read.xlsx("data-raw/src data/phase 1 historic data/Ambulance Response Programme - Historical National Collation v7 edited.xlsx", sheet = service, rows = 2:219, colNames = FALSE, skipEmptyRows = TRUE))
+  data_wide <- data.table(read.xlsx("data-raw/src data/phase 1 historic data/Ambulance Response Programme - Historical National Collation v7 edited TO SEND TO ANNABEL.xlsx", sheet = service, rows = 2:220, colNames = FALSE, skipEmptyRows = TRUE))
   suppressWarnings(setnames(data_wide, c("measure_code", "measure_descr", "sub_measure", "data_format", make.unique(paste0("date_", as.integer(data_wide[1, 5:ncol(data_wide), with = FALSE]))))))
   data_wide[, row_num := as.integer(row.names(data_wide))]
 

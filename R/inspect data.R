@@ -1,12 +1,5 @@
 library(data.table)
 
-# Once the raw data has been read in, see "data-raw/read arp1 data.R" and "data-raw/read arp2.1 data.R",
-# process it:
-processARPData(phase = 1)
-processARPData(phase = 2.1)
-processARPData(phase = 2.2)
-
-
 # How does it look?
 summ_data1 <- getARPSummaryData(phase = 1)
 View(summ_data1)
@@ -14,12 +7,11 @@ summ_data2.1 <- getARPSummaryData(phase = 2.1)
 View(summ_data2.1)
 summ_data2.2 <- getARPSummaryData(phase = 2.2)
 View(summ_data2.2)
-
+summ_data_wholeservice <- getARPSummaryData(phase = "_wholeservice")
+View(summ_data_wholeservice)
 
 
 # With all plots, below, I recommend viewing them full size on a separate monitor
-
-
 
 # Historic Phase 1 data
 examineProblematicData(phase = 1, measuresCombined = TRUE, startDate = as.Date("2014-10-06"), endDate = as.Date("2016-09-30"))

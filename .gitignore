@@ -11,3 +11,5 @@ test/**/*
 test/*
 output_images/*
 output_images/**/*
+output_data/*
+output_data/**/*

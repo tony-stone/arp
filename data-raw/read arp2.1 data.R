@@ -4,10 +4,9 @@ library(lubridate)
 
 load("data/auxillary_data2.1.Rda")
 
-
 # Read in service data ----------------------------------------------------
 arp_service_list <- lapply(service_data2.1$sheet_name, function(service) {
-  data_wide <- data.table(read.xlsx("data-raw/src data/phase 2.1 data/Ambulance Response Programme Template Submission P2 17102016.xlsx", sheet = service, rows = 2:256, colNames = FALSE, skipEmptyRows = TRUE))
+  data_wide <- data.table(read.xlsx("data-raw/src data/phase 2.1 data/Ambulance Response Programme Template Submission P2  FOR CORRECTION 2017.02.16.xlsx", sheet = service, rows = 2:256, colNames = FALSE, skipEmptyRows = TRUE))
   suppressWarnings(setnames(data_wide, c("measure_code", "measure_descr", "sub_measure", "data_format", make.unique(paste0("date_", as.integer(data_wide[1, 5:ncol(data_wide), with = FALSE]))))))
   data_wide[, row_num := as.integer(row.names(data_wide))]
 
