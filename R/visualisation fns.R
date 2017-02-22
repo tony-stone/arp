@@ -248,10 +248,14 @@ identifyOutlyingAndMissingData <- function(data, nSD = 3) {
 }
 
 
-examineData <- function(phase = "0", outliers_SD = 3, startDate = -Inf, endDate = Inf) {
-  if(missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1"))) stop("Invalid phase")
+examineData <- function(phase = "0", outliers_SD = 3, startDate = -Inf, endDate = Inf, data = NA) {
+  if(missing(data) & (missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1")))) stop("Invalid phase")
 
-  arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
+  if(missing(data)) {
+    arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
+  } else {
+    arp_data <- data
+  }
 
   arp_data <- arp_data[week_beginning >= startDate & week_beginning <= endDate]
 
@@ -287,10 +291,14 @@ examineData <- function(phase = "0", outliers_SD = 3, startDate = -Inf, endDate 
 }
 
 
-examineProblematicData <- function(phase = "0", measuresCombined = TRUE, outliersAtSD = 3, startDate = -Inf, endDate = Inf) {
-  if(missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1"))) stop("Invalid phase")
+examineProblematicData <- function(phase = "0", measuresCombined = TRUE, outliersAtSD = 3, startDate = -Inf, endDate = Inf, data = NA) {
+  if(missing(data) & (missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1")))) stop("Invalid phase")
 
-  arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
+  if(missing(data)) {
+    arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
+  } else {
+    arp_data <- data
+  }
 
   arp_data <- arp_data[week_beginning >= startDate & week_beginning <= endDate]
 
@@ -375,10 +383,14 @@ examineProblematicData <- function(phase = "0", measuresCombined = TRUE, outlier
 }
 
 
-getARPSummaryData <- function(phase = "0", startDate = -Inf, endDate = Inf) {
-  if(missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1"))) stop("Invalid phase")
+getARPSummaryData <- function(phase = "0", startDate = -Inf, endDate = Inf, data = NA) {
+  if(missing(data) & (missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1")))) stop("Invalid phase")
 
-  arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
+  if(missing(data)) {
+    arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
+  } else {
+    arp_data <- data
+  }
 
   arp_data <- arp_data[week_beginning >= startDate & week_beginning <= endDate]
 
@@ -406,7 +418,7 @@ examineCSTriggers <- function(phase = "0", showSDLimits = TRUE, SDLimits = 3, st
   arp_data <- arp_data[week_beginning >= startDate & week_beginning <= endDate]
 
   setorder(arp_data, measure_order)
-  call_levels <- unique(arp_data[substr(measure_code, 1, 4) %in% relevant_measure_codes, call_level])
+  call_levels <- unique(arp_data[measure_type == "percent", call_level])
 
   i <- 1
   while(i <= length(call_levels)) {
@@ -428,10 +440,14 @@ examineCSTriggers <- function(phase = "0", showSDLimits = TRUE, SDLimits = 3, st
 
 
 
-saveProblematicDataImages <- function(phase = "0", measuresCombined = TRUE, outliersAtSD = 3, startDate = -Inf, endDate = Inf) {
-  if(missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1"))) stop("Invalid phase")
+saveProblematicDataImages <- function(phase = "0", measuresCombined = TRUE, outliersAtSD = 3, startDate = -Inf, endDate = Inf, data = NA) {
+  if(missing(data) & (missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1")))) stop("Invalid phase")
 
-  arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
+  if(missing(data)) {
+    arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
+  } else {
+    arp_data <- data
+  }
 
   arp_data <- arp_data[week_beginning >= startDate & week_beginning <= endDate]
 
