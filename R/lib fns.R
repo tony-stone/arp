@@ -328,14 +328,16 @@ combineComparablePhaseData <- function() {
   arp_data_all <- arp_data_all[nchar(std_measure_code) < 3]
   arp_combined_data <- rbind(arp_data_all, summed_measures, arp_all_red1_data)
 
-  # Rename standard measures - so they're standard
+  # Rename standard measures - so they're standardised
   setorder(arp_combined_data, phase)
-  standardised_names <- arp_combined_data[!duplicated(arp_combined_data[, std_measure_code]), .(std_measure_code, measure_code, measure, sub_measure, measure_type)]
-  arp_combined_data[, c("measure_code", "measure", "sub_measure", "measure_type") := NULL]
+  standardised_names <- arp_combined_data[!duplicated(arp_combined_data[, std_measure_code]), .(std_measure_code, measure_code, measure, sub_measure, measure_type, measure_order)]
+  arp_combined_data[, c("measure_code", "measure", "sub_measure", "measure_type", "measure_order") := NULL]
   arp_combined_data <- merge(arp_combined_data, standardised_names, by = "std_measure_code")
 
   arp_combined_data[is.na(sub_measure), sub_measure := ""]
-  arp_combined_data[, std_measure_name := make.names(paste0("m", paste(measure_code, measure, sub_measure, measure_type, call_level, sep = "_")))]
+  arp_combined_data[, std_measure_code_str := paste0("o", std_measure_code)]
+  arp_combined_data[nchar(std_measure_code) == 1, std_measure_code_str := paste0("o0", std_measure_code)]
+  arp_combined_data[, std_measure_name := make.names(paste(std_measure_code_str, measure_code, measure, sub_measure, measure_type, call_level, sep = "_"))]
 
   fname <- paste0("data/arp_data_combined - ", getTimestamp(), ".Rds")
   saveRDS(arp_combined_data, file = fname)
