@@ -49,8 +49,10 @@ processARP1Data <- function() {
   # options(warn = -1)
   arp_data[value_format_raw == "time", value := cleanTimes(value)]
   arp_data[value_format_raw == "date" & measure_code == "22", value := cleanDatetimes(value, 10000)]
-  arp_data[value_format_raw == "date" & measure_code != "22" & amb_service == "NEAS", value := cleanDatetimes(value, 20)]
-  arp_data[value_format_raw == "date" & measure_code != "22" & amb_service != "NEAS", value := cleanDatetimes(value, 150)]
+  arp_data[value_format_raw == "date" & measure_code == "17.1" & amb_service == "NWAS", value := cleanDatetimes(value, 250)]
+  arp_data[value_format_raw == "date" & measure_code == "17.1" & amb_service != "NWAS", value := cleanDatetimes(value, 150)]
+  arp_data[value_format_raw == "date" & !(measure_code %in% c("17.1", "22")) & amb_service == "NEAS", value := cleanDatetimes(value, 20)]
+  arp_data[value_format_raw == "date" & !(measure_code %in% c("17.1", "22")) & amb_service != "NEAS", value := cleanDatetimes(value, 150)]
 
   # Convert values to type double
   arp_data[, value := as.double(value)]
