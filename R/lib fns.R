@@ -208,14 +208,14 @@ processARP2.2Data <- function() {
   arp_data <- arp_data[!(triage_system  == "AMPDS" & measure_code == "8a")]
 
   # Remove 9a-e
-  arp_data <- arp_data[!(measure_code %in% paste0(9, letters[1:5]))]
+  arp_data <- arp_data[!(measure_code %in% paste0("9.", letters[1:5]))]
 
   # 11.e and 15.b(i-iii): call connect to clock start - cat1 always 0, call start always trigger
-  arp_data[measure_code %in% c("11.e", paste0("15.b(", tolower(as.roman(1:3)), ")")), value := NA]
+  arp_data <- arp_data[!(measure_code %in% c("11.e", paste0("15.b(", tolower(as.roman(1:3)), ")")))]
 
   # Replace NAs with 0 for specific WMAS measures
   arp_data[amb_service == "WMAS" &
-                      measure_code %in% c("2.i", "2.n", "3.i", "3.n") &
+                      measure_code %in% c("2.i", "2.n", "2.o", "3.i", "3.n") &
                       is.na(value) &
                       week_beginning >= min(arp_data[!is.na(value), week_beginning]) &
                       week_beginning <= max(arp_data[!is.na(value), week_beginning]),
