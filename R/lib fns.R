@@ -205,7 +205,7 @@ processARP2.2Data <- function() {
 
   # Remove specific measures
   ## Remove 8a for AMPDS sites
-  arp_data <- arp_data[triage_system  != "AMPDS" | (triage_system  == "AMPDS" & measure_code != "8a")]
+  arp_data <- arp_data[!(triage_system  == "AMPDS" & measure_code == "8a")]
 
   # Remove 9a-e
   arp_data <- arp_data[!(measure_code %in% paste0(9, letters[1:5]))]
