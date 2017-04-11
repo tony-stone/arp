@@ -57,9 +57,9 @@ saveProblematicDataImages(phase = 2.1, measuresCombined = FALSE)
 
 # Phase 2.2 data
 examineProblematicData(phase = 2.2, measuresCombined = TRUE)
-examineProblematicData(phase = 2.2, measuresCombined = FALSE, endDate = as.Date("2017-01-02"))
+examineProblematicData(phase = 2.2, measuresCombined = FALSE, endDate = as.Date("2017-03-27"))
 examineData(phase = 2.2)
 examineCSTriggers(phase = 2.2, showSDLimits = TRUE)
 
 saveProblematicDataImages(phase = 2.2, measuresCombined = TRUE)
-saveProblematicDataImages(phase = 2.2, measuresCombined = FALSE, endDate = as.Date("2017-01-02"))
+saveProblematicDataImages(phase = 2.2, measuresCombined = FALSE, endDate = as.Date("2017-03-27"))
