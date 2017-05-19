@@ -249,7 +249,7 @@ identifyOutlyingAndMissingData <- function(data, nSD = 3) {
 
 
 examineData <- function(phase = "0", outliers_SD = 3, startDate = -Inf, endDate = Inf, data = NA) {
-  if(missing(data) & (missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1")))) stop("Invalid phase")
+  if(missing(data) & (missing(phase) | !isValidPhase(phase))) stop("Invalid phase")
 
   if(missing(data)) {
     arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
@@ -292,7 +292,7 @@ examineData <- function(phase = "0", outliers_SD = 3, startDate = -Inf, endDate 
 
 
 examineProblematicData <- function(phase = "0", measuresCombined = TRUE, outliersAtSD = 3, startDate = -Inf, endDate = Inf, data = NA) {
-  if(missing(data) & (missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1")))) stop("Invalid phase")
+  if(missing(data) & (missing(phase) | !isValidPhase(phase))) stop("Invalid phase")
 
   if(missing(data)) {
     arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
@@ -384,7 +384,7 @@ examineProblematicData <- function(phase = "0", measuresCombined = TRUE, outlier
 
 
 getARPSummaryData <- function(phase = "0", startDate = -Inf, endDate = Inf, data = NA) {
-  if(missing(data) & (missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1")))) stop("Invalid phase")
+  if(missing(data) & (missing(phase) | !isValidPhase(phase))) stop("Invalid phase")
 
   if(missing(data)) {
     arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
@@ -411,7 +411,7 @@ getARPSummaryData <- function(phase = "0", startDate = -Inf, endDate = Inf, data
 
 
 examineCSTriggers <- function(phase = "0", showSDLimits = TRUE, SDLimits = 3, startDate = -Inf, endDate = Inf) {
-  if(missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1"))) stop("Invalid phase")
+  if(missing(data) & (missing(phase) | !isValidPhase(phase))) stop("Invalid phase")
 
   arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))
 
@@ -441,7 +441,7 @@ examineCSTriggers <- function(phase = "0", showSDLimits = TRUE, SDLimits = 3, st
 
 
 saveProblematicDataImages <- function(phase = "0", measuresCombined = TRUE, outliersAtSD = 3, startDate = -Inf, endDate = Inf, data = NA) {
-  if(missing(data) & (missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1")))) stop("Invalid phase")
+  if(missing(data) & (missing(phase) | !isValidPhase(phase))) stop("Invalid phase")
 
   if(missing(data)) {
     arp_data <- readRDS(paste0("data/arp_data", phase, "_final.Rds"))

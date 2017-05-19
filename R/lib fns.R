@@ -1,5 +1,5 @@
 processARPData <- function(phase = "0") {
-  if(missing(phase) | !(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1", "_standdown"))) stop("Invalid phase")
+  if(missing(phase) | !isValidPhase(phase)) stop("Invalid phase")
 
   if(phase == "1") {
     arp_data <- processARP1Data()
@@ -13,6 +13,8 @@ processARPData <- function(phase = "0") {
     arp_data <- processARPRed1Data()
   } else if(phase == "_standdown") {
     arp_data <- processARPStandDownData()
+  } else if(phase == "_ruralurban") {
+    arp_data <- processARPRuralUrbanData()
   }
 
   # remove trimmed mean data, not using
@@ -332,6 +334,30 @@ processARPStandDownData <- function() {
 
 
 
+processARPRuralUrbanData <- function() {
+
+  load("data/arp_ruralurban_data_raw.Rda")
+  load("data/auxillary_data_ruralurban.Rda")
+
+  # Merge in info about measures/services -----------------------------------
+  arp_data <- merge(arp_ruralurban_data, measures_data_ruralurban, by = "measure_code")
+  arp_data <- merge(arp_data, service_data_ruralurban[, .(amb_service, triage_system)], by = "amb_service")
+
+  arp_data[value_format_raw == "time", value := cleanTimes(value)]
+  # Convert values to type double
+  arp_data[, value := as.double(value)]
+
+  # Convert week beginnings to type date
+  arp_data[, week_beginning := as.Date(as.integer(substr(week_beginning, 6, nchar(week_beginning))), origin = "1899-12-30")]
+
+  # return
+  return(arp_data)
+}
+
+
+
+
+
 combineComparablePhaseData <- function() {
   # read in individual phase data
   arp_data1 <- readRDS("data/arp_data1_final.Rds")
@@ -631,6 +657,114 @@ combineWSandPhaseData <- function(phase = "0") {
 }
 
 
+
+
+
+combineUrbanRuralWithStdMeasures <- function() {
+  # read in individual phase data
+  arp_data1 <- readRDS("data/arp_data1_final.Rds")
+  arp_data2.1 <- readRDS("data/arp_data2.1_final.Rds")
+  arp_data2.2 <- readRDS("data/arp_data2.2_final.Rds")
+  arp_data_ruralurban <- readRDS("data/arp_data_ruralurban_final.Rds")
+
+  # add phase field
+  arp_data1[, phase := "1"]
+  arp_data2.1[, phase := "2.1"]
+  arp_data2.2[, phase := "2.2"]
+  arp_data_ruralurban[, phase := "ruralurban"]
+
+  # bind (standard) data together
+  arp_data_all <- rbind(arp_data_ruralurban, arp_data1, arp_data2.1, arp_data2.2)[phase == "ruralurban" |
+                                                                                   std_measure_code %in% c("22", "36", "41") |
+                                                                                   substr(std_measure_code, 1, 2) == "24"]
+
+
+  # Kepp only SWAS, WMAS, and YAS
+  arp_data_all <- arp_data_all[amb_service %in% c("SWAS", "WMAS", "YAS")]
+
+  # Remove value format
+  arp_data_all[, value_format_raw := NULL]
+
+  # Ensure no overlaps between phases - we use equalities on both sides of intervals as we wish to exclude changeover weeks
+  ## Phase 1
+  arp_data_all <- arp_data_all[!(phase == "1" & (((amb_service == "SWAS" | amb_service == "YAS") & week_beginning >= as.Date("2016-04-18")) |
+                                                   (amb_service == "WMAS" & week_beginning >= as.Date("2016-06-06"))))]
+
+  ## Phase 2.1
+  arp_data_all <- arp_data_all[!(phase == "2.1" & (((amb_service == "SWAS" | amb_service == "YAS") & (week_beginning <= as.Date("2016-04-18") | week_beginning >= as.Date("2016-10-17"))) |
+                                                     (amb_service == "WMAS" & (week_beginning <= as.Date("2016-06-06") | week_beginning >= as.Date("2016-10-10")))))]
+
+  ## Phase 2.2
+  arp_data_all <- arp_data_all[!(phase == "2.2" & (((amb_service == "SWAS" | amb_service == "YAS") & week_beginning <= as.Date("2016-10-17")) |
+                                                     (amb_service == "WMAS" & week_beginning <= as.Date("2016-10-10"))))]
+
+  # create 2char measure codes and sum values where necessary
+  arp_data_all[, std_measure_code.2char := substr(std_measure_code, 1, 2)]
+  summed_measures <- arp_data_all[nchar(std_measure_code) == 3, .(value = sum(value, na.rm = TRUE)), by = .(amb_service, triage_system, week_beginning, std_measure_code.2char, measure, sub_measure, measure_type, phase)]
+  summed_measures[value == 0, value := NA]
+
+  # standardise names of summed measures
+  setorder(summed_measures, phase)
+  standardised_names <- summed_measures[!duplicated(summed_measures[, std_measure_code.2char]), .(std_measure_code.2char, measure, sub_measure, measure_type)]
+  summed_measures[, c("measure", "sub_measure", "measure_type") := NULL]
+  summed_measures <- merge(summed_measures, standardised_names, by = "std_measure_code.2char")
+
+  # create necessary columns to allow binding, and bind data
+  summed_measures[, ':=' (call_level = "all",
+                          section = NA,
+                          measure_code = ".sum.",
+                          measure_order = as.integer(std_measure_code.2char),
+                          std_measure_code = std_measure_code.2char,
+                          std_measure_code.2char = NULL,
+                          phase = "summed")]
+
+  arp_data_all[, std_measure_code.2char := NULL]
+
+  arp_combined_data <- rbind(arp_data_all[is.na(std_measure_code) | nchar(std_measure_code) < 3],
+                             summed_measures)
+
+  # ruralurban data
+  arp_combined_data[phase == "ruralurban", std_measure_code := as.character(max(as.integer(arp_combined_data$std_measure_code), na.rm = TRUE) + measure_order)]
+
+  # Remove weeks outwith range of data
+  arp_combined_data <- arp_combined_data[week_beginning >= as.Date("2016-01-04") & week_beginning <= max(arp_combined_data[!is.na(value), week_beginning])]
+
+  # Rename standard measures - so they're standardised
+  setorder(arp_combined_data, phase)
+  standardised_names <- arp_combined_data[!duplicated(arp_combined_data[, std_measure_code]), .(std_measure_code, section, measure_code, measure, sub_measure, measure_type, phase, measure_order)]
+  suppressWarnings(standardised_names[, phase_order := as.double(phase)])
+  standardised_names[phase == "ruralurban", phase_order := 0.0]
+  standardised_names[, measure_order := as.character(frank(standardised_names[, .(phase_order, measure_order)]))]
+  standardised_names[, measure_order := paste0(sapply(3 - nchar(measure_order), function(n) paste0(rep("0", n), collapse = "")), measure_order)]
+  standardised_names[, ':=' (measure_order = paste0("o", measure_order),
+                             phase_order = NULL)]
+  arp_combined_data[, c("phase", "section", "measure_code", "measure", "sub_measure", "measure_type", "measure_order") := NULL]
+  arp_combined_data <- merge(arp_combined_data, standardised_names, by = "std_measure_code")
+
+  arp_combined_data[is.na(sub_measure), sub_measure := ""]
+  arp_combined_data[, std_measure_name := make.names(paste(measure_order, measure_code, measure, sub_measure, measure_type, call_level, sep = "_"))]
+
+  fname <- paste0("data/arp_ruralurban_data_combined - ", getTimestamp(), ".Rds")
+  saveRDS(arp_combined_data, file = fname)
+  print(paste0("File saved: ", fname))
+  return(fname)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 saveDataForRJ <- function(data_src, colname_var, filename) {
   if(length(colname_var) != 1 | any(!(c("amb_service", "week_beginning", "value", colname_var) %in% colnames(data_src)))) stop("Data in invalid form or colname_var not correctly specified")
 
@@ -689,6 +823,13 @@ cleanDatetimes <- function(t1, hours_cut_off = 0) {
 }
 
 
+
+
 getTimestamp <- function() {
   return(format(Sys.time(), "%Y-%m-%d %H.%M.%S"))
+}
+
+
+isValidPhase <- function(phase) {
+  return(phase %in% c("1", "2.1", "2.2", "_wholeservice", "_red1", "_ruralurban"))
 }

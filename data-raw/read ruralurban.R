@@ -23,7 +23,7 @@ ruralurban_data_list <- apply(service_data_ruralurban, 1, function(service_data)
     # Keep only measure code columns and data
     data_wide[, colnames(data_wide)[substr(colnames(data_wide), 1, 7) == "date_NA"] := NULL]
 
-    data_wide[, sub_measure := sheetname]
+    data_wide[, sheet := sheetname]
 
     return(data_wide)
 
@@ -38,7 +38,14 @@ ruralurban_data_list <- apply(service_data_ruralurban, 1, function(service_data)
 ruralurban_data_wide <- rbindlist(ruralurban_data_list)
 
 # make long form
-suppressWarnings(arp_ruralurban_data <- melt(ruralurban_data_wide, id.vars = c("measure_code", "sub_measure", "amb_service"), variable.name = "week_beginning", value.name = "value", variable.factor = FALSE))
+suppressWarnings(arp_ruralurban_data <- melt(ruralurban_data_wide, id.vars = c("measure_code", "sheet", "amb_service"), variable.name = "week_beginning", value.name = "value", variable.factor = FALSE))
+arp_ruralurban_data[, value := as.character(value)]
+
+# Recode measure codes based on sheet name
+arp_ruralurban_data[sheet == "urban", measure_code := paste0(measure_code, "u")]
+arp_ruralurban_data[sheet == "rural", measure_code := paste0(measure_code, "r")]
+arp_ruralurban_data[sheet == "urban-rural", measure_code := paste0(measure_code, "ur")]
+arp_ruralurban_data[, sheet := NULL]
 
 # save data
 save(arp_ruralurban_data, file = "data/arp_ruralurban_data_raw.Rda")

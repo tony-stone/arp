@@ -8,6 +8,7 @@ processARPData(phase = "2.2")
 processARPData(phase = "_wholeservice")
 processARPData(phase = "_red1")
 processARPData(phase = "_standdown")
+processARPData(phase = "_ruralurban")
 
 # All whole service datacombined data
 filepath <- combineComparablePhaseData()
@@ -53,9 +54,17 @@ saveDataForRJ(data_standdown, "std_measure_name", "ARP stand-down data")
 
 
 
+# Combine Phase 1, 2.1, 2.2 data from YAS, SWAS, WMAS with urban rural data
+fname <- combineUrbanRuralWithStdMeasures()
+data_urbanrural <- readRDS(fname)
+#examineData(data = data_urbanrural)
+saveDataForRJ(data_urbanrural, "std_measure_name", "ARP urban-rural data")
+
+
+
 # lookup for Richard
-bla <- unique(data_standdown[, .(std_measure_name, measure_code, measure, sub_measure, measure_type, call_level)])
+bla <- unique(data_urbanrural[, .(std_measure_name, measure_code, measure, sub_measure, measure_type, call_level)])
 setorder(bla, std_measure_name)
-write.csv(bla[, .(std_measure_name, measure_code, measure, sub_measure, measure_type, call_level)], file = "output_data/stand down data measure lookup.csv", row.names = FALSE)
+write.csv(bla[, .(std_measure_name, measure_code, measure, sub_measure, measure_type, call_level)], file = "output_data/rural urban data measure lookup.csv", row.names = FALSE)
 
 
