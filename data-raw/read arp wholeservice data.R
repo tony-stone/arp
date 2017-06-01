@@ -6,7 +6,7 @@ load("data/auxillary_data_wholeservice.Rda")
 
 # Read in service data ----------------------------------------------------
 arp_service_list <- lapply(service_data_wholeservice$sheet_name, function(service) {
-  data_wide <- data.table(read.xlsx("data-raw/src data/wholeservice data/ARP Final Req Collation revised Tracy 20-02-2017 edited 23-02.xlsx", sheet = service, rows = 4:50, colNames = FALSE, skipEmptyRows = TRUE))
+  data_wide <- data.table(read.xlsx("data-raw/src data/wholeservice data/ARP  Final Req Template Collation 2 2017-05-22 edited.xlsx", sheet = service, rows = 4:50, colNames = FALSE, skipEmptyRows = TRUE))
   suppressWarnings(setnames(data_wide, c("measure_code", "measure_descr", make.unique(paste0("date_", as.integer(data_wide[1, 3:ncol(data_wide), with = FALSE]))))))
   data_wide[, row_num := as.integer(row.names(data_wide))]
 
