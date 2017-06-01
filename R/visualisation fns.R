@@ -266,7 +266,7 @@ examineData <- function(phase = "0", outliers_SD = 3, startDate = -Inf, endDate 
 
   i <- 1
   while(i <= nrow(measures)) {
-    if(nrow(arp_data[!is.na(value) & measure == measures[i, measure] & sub_measure == measures[i, sub_measure] & measure_type == measures[i, measure_type] & call_level == measures[i, call_level]]) == 0) {
+    if(arp_data[!is.na(value) & (measure == measures[i, measure] | is.na(measures[i, measure])) & (sub_measure == measures[i, sub_measure] | is.na(measures[i, sub_measure])) & (measure_type == measures[i, measure_type] | is.na(measures[i, measure_type])) & (call_level == measures[i, call_level] | is.na(measures[i, call_level])), .N] == 0) {
       cat(paste("No data for:", paste(measures[i, .(measure, sub_measure, measure_type, call_level)], collapse = " - ")))
     } else {
       print(plotWeeklyVals(arp_data, measures[i, measure], measures[i, sub_measure], measures[i, measure_type], measures[i, call_level], show_call_level = TRUE, nSD = outliers_SD, call_level_version = as.character(phase)))
