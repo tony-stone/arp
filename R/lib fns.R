@@ -267,6 +267,9 @@ processARPwholeserviceData <- function() {
   # Convert week beginnings to type date
   arp_data[, week_beginning := as.Date(as.integer(substr(week_beginning, 6, nchar(week_beginning))), origin = "1899-12-30")]
 
+  # We are not using H&T measures so remove these
+  arp_data <- arp_data[!(measure_code %in% as.character(13:21))]
+
   # return
   return(arp_data)
 }

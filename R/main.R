@@ -22,8 +22,7 @@ examineData(phase = look.at.what, startDate = as.Date("2016-07-01"))
 # All whole service data combined
 filepath <- combineComparablePhaseData()
 wholeservice.data <- readRDS(filepath)[std_measure_code %in% as.character(c(1:22, 24, 36, 41)) &
-                                         week_beginning >= as.Date("2016-01-04") &
-                                         week_beginning <= as.Date("2016-12-26")]
+                                         week_beginning >= as.Date("2016-01-04")]
 saveDataForRJ(wholeservice.data, "std_measure_name", "ARP wholeservice data")
 
 # Phase 1 data
@@ -58,10 +57,10 @@ data_standdown <- readRDS(fname)
 saveDataForRJ(data_standdown, "std_measure_name", "ARP stand-down data")
 
 
-# Combine Phase 1, 2.1, 2.2 data from YAS, SWAS, WMAS with urban rural data
+# Rural-Urban data
 fname <- combineUrbanRuralWithStdMeasures()
 data_urbanrural <- readRDS(fname)
-#examineData(data = data_urbanrural)
+examineData(data = data_urbanrural)
 saveDataForRJ(data_urbanrural, "std_measure_name", "ARP urban-rural data")
 
 

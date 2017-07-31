@@ -61,7 +61,7 @@ getProblematicColourPallete <- function(nSD) {
 }
 
 
-plotWeeklyVals <- function(data, measure_val, sub_measure_val = NA, measure_type_val = NA, call_level_vals = NA, show_call_level = FALSE, call_level_version = "1", nSD = 3, showSDLines = TRUE, highlightOutliers = TRUE) {
+plotWeeklyVals <- function(data, measure_val, sub_measure_val = NA, measure_type_val = NA, call_level_vals = NA, show_call_level = FALSE, call_level_version = "1", nSD = 3, showSDLines = TRUE, highlightOutliers = TRUE, freey = TRUE) {
 
   plot_data <- copy(data[measure %in% measure_val & !is.na(value)])
 
@@ -166,9 +166,15 @@ plotWeeklyVals <- function(data, measure_val, sub_measure_val = NA, measure_type
   title_text <- paste0(measure_val, sub_measure_val, measure_type_val, " [", plot_measures, "]")
   if(showSDLines == TRUE | highlightOutliers == TRUE) title_text <- paste0(title_text, "\n(outliers/limits shown at ", nSD, "SDs)")
 
+  if(freey == TRUE) {
+    scales_val <- "free_y"
+  } else {
+    scales_val <- "fixed"
+  }
+
   plot <- plot +
     ggplot2::ggtitle(title_text)  +
-    ggplot2::facet_wrap(~amb_service, ncol = 2, scales = "free_y") +
+    ggplot2::facet_wrap(~amb_service, ncol = 2, scales = scales_val) +
     ggplot2::geom_line(size = 1) +
     ggplot2::scale_x_date(date_labels = "%e %b %Y", date_breaks = "2 weeks", expand = c(0, 2)) +
     ggplot2::scale_y_continuous(labels = scales::comma) +
@@ -248,7 +254,7 @@ identifyOutlyingAndMissingData <- function(data, nSD = 3) {
 }
 
 
-examineData <- function(phase = "0", outliers_SD = 3, startDate = -Inf, endDate = Inf, data = NA) {
+examineData <- function(phase = "0", outliers_SD = 3, startDate = -Inf, endDate = Inf, plotFreeY = TRUE, data = NA) {
   if(missing(data) & (missing(phase) | !isValidPhase(phase))) stop("Invalid phase")
 
   if(missing(data)) {
@@ -269,7 +275,7 @@ examineData <- function(phase = "0", outliers_SD = 3, startDate = -Inf, endDate 
     if(arp_data[!is.na(value) & (measure == measures[i, measure] | is.na(measures[i, measure])) & (sub_measure == measures[i, sub_measure] | is.na(measures[i, sub_measure])) & (measure_type == measures[i, measure_type] | is.na(measures[i, measure_type])) & (call_level == measures[i, call_level] | is.na(measures[i, call_level])), .N] == 0) {
       cat(paste("No data for:", paste(measures[i, .(measure, sub_measure, measure_type, call_level)], collapse = " - ")))
     } else {
-      print(plotWeeklyVals(arp_data, measures[i, measure], measures[i, sub_measure], measures[i, measure_type], measures[i, call_level], show_call_level = TRUE, nSD = outliers_SD, call_level_version = as.character(phase)))
+      print(plotWeeklyVals(arp_data, measures[i, measure], measures[i, sub_measure], measures[i, measure_type], measures[i, call_level], show_call_level = TRUE, nSD = outliers_SD, call_level_version = as.character(phase), freey = plotFreeY))
     }
     cmd <- readline(prompt="Press [enter] to continue; [b] to go back; [m(measure code)] to jump to measure; or [q] to quit. Alternatively, enter a number to proceed (+ve) or move back (-ve) by: ")
     if(!is.na(as.integer(cmd))) {
